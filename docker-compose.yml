@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: drift
+      POSTGRES_PASSWORD: driftpass
+      POSTGRES_DB: drift_monitor
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api:
+    build: ./api
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgres://drift:driftpass@postgres:5432/drift_monitor
+      PYTHON_SERVICE_URL: http://python-service:8000
+    depends_on:
+      - postgres
+
+  python-service:
+    build: ./python-service
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://drift:driftpass@postgres:5432/drift_monitor
+
+  worker:
+    build: ./worker
+    environment:
+      DATABASE_URL: postgres://drift:driftpass@postgres:5432/drift_monitor
+      PYTHON_SERVICE_URL: http://python-service:8000
+    depends_on:
+      - postgres
+      - python-service
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
