@@ -13,6 +13,7 @@ CREATE TABLE inference_logs (
     input_data JSONB NOT NULL,
     prediction JSONB NOT NULL,
     confidence FLOAT,
+    embedding FLOAT ARRAY,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -24,6 +25,7 @@ CREATE TABLE drift_runs (
     window_end TIMESTAMP NOT NULL,
     kl_divergence FLOAT,
     cosine_similarity FLOAT,
+    embedding_drift FLOAT,
     drift_detected BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -47,3 +49,18 @@ CREATE INDEX idx_inference_logs_model_id ON inference_logs(model_id);
 CREATE INDEX idx_inference_logs_created_at ON inference_logs(created_at);
 CREATE INDEX idx_drift_runs_model_id ON drift_runs(model_id);
 CREATE INDEX idx_alerts_model_id ON alerts(model_id);
+
+-- Adaptive threshold tracking
+CREATE TABLE threshold_history (
+    id SERIAL PRIMARY KEY,
+    model_id INTEGER REFERENCES models(id),
+    metric_name VARCHAR(50) NOT NULL,
+    threshold_value FLOAT NOT NULL,
+    sample_count INTEGER,
+    mean_value FLOAT,
+    std_value FLOAT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_threshold_history_model_id ON threshold_history(model_id);
+CREATE INDEX idx_threshold_history_metric ON threshold_history(metric_name);
