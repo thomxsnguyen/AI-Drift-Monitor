@@ -28,16 +28,18 @@ app.post("/inference", async (req, res) => {
       input_data,
       prediction,
       confidence,
+      embedding,
     } = req.body;
 
     const [row] = await query(
-      `INSERT INTO inference_logs (model_id, input_data, prediction, confidence)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
+      `INSERT INTO inference_logs (model_id, input_data, prediction, confidence, embedding)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [
         model_id,
         JSON.stringify(input_data),
         JSON.stringify(prediction),
         confidence,
+        embedding || null,
       ]
     );
 
