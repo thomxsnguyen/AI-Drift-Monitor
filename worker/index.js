@@ -29,14 +29,15 @@ async function computeDrift(modelId) {
 
 async function storeDriftRun(modelId, drift) {
   const [row] = await query(
-    `INSERT INTO drift_runs (model_id, window_start, window_end, kl_divergence, cosine_similarity, drift_detected)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    `INSERT INTO drift_runs (model_id, window_start, window_end, kl_divergence, cosine_similarity, embedding_drift, drift_detected)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
     [
       modelId,
       drift.window_start,
       drift.window_end,
       drift.kl_divergence,
       drift.cosine_similarity,
+      drift.embedding_drift || null,
       drift.drift_detected,
     ]
   );
@@ -48,9 +49,16 @@ async function createAlert(modelId, driftRunId, drift, modelName) {
     drift.kl_divergence > DRIFT_CONFIG.criticalThreshold
       ? "critical"
       : "warning";
-  const message = `Drift detected: ${modelName} (KL=${drift.kl_divergence.toFixed(
+  
+  let message = `Drift detected: ${modelName} (KL=${drift.kl_divergence.toFixed(
     4
-  )}, cosine=${drift.cosine_similarity.toFixed(4)})`;
+  )}, cosine=${drift.cosine_similarity.toFixed(4)}`;
+  
+  if (drift.embedding_drift) {
+    message += `, embedding=${drift.embedding_drift.toFixed(4)}`;
+  }
+  
+  message += `)`;
 
   await query(
     `INSERT INTO alerts (model_id, drift_run_id, severity, message) VALUES ($1, $2, $3, $4)`,
@@ -62,13 +70,18 @@ async function createAlert(modelId, driftRunId, drift, modelName) {
 
 async function checkModel(model) {
   const drift = await computeDrift(model.id);
-  console.log(
-    `[${model.name}] KL=${drift.kl_divergence.toFixed(
-      4
-    )} cosine=${drift.cosine_similarity.toFixed(4)} drift=${
-      drift.drift_detected
-    }`
-  );
+  
+  let logMessage = `[${model.name}] KL=${drift.kl_divergence.toFixed(
+    4
+  )} cosine=${drift.cosine_similarity.toFixed(4)}`;
+  
+  if (drift.embedding_drift) {
+    logMessage += ` embedding=${drift.embedding_drift.toFixed(4)}`;
+  }
+  
+  logMessage += ` drift=${drift.drift_detected}`;
+  
+  console.log(logMessage);
 
   const driftRunId = await storeDriftRun(model.id, drift);
 
