@@ -67,9 +67,12 @@ curl -X POST http://localhost:3001/inference \
     "model_id": 1,
     "input_data": {"feature1": 0.5, "feature2": 0.3},
     "prediction": {"class": "positive", "score": 0.92},
-    "confidence": 0.92
+    "confidence": 0.92,
+    "embedding": [0.82, 0.15, 0.31, 0.94]
   }'
 ```
+
+**Note**: The `embedding` field is optional but recommended for better drift detection.
 
 ### Get latest drift metrics
 
